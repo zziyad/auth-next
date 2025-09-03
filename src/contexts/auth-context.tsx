@@ -1,6 +1,7 @@
 "use client"
 
 import { createContext, useContext, useState, useEffect, useRef, ReactNode } from "react"
+// import { useQueryClient } from '@tanstack/react-query'
 import { mapAuthErrorCode } from "@/lib/auth-errors"
 import { useRouter } from "next/navigation"
 
@@ -22,8 +23,11 @@ interface AuthContextType {
 	logout: () => void
 	refreshUser: () => Promise<void>
 	refreshTokens: () => Promise<boolean>
+	authenticatedFetch: (url: string, options?: RequestInit) => Promise<Response>
 	lastErrorCode?: string
 	lastErrorMessage?: string
+	// React Query integration
+	// invalidateQueries: () => void
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -51,6 +55,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 	const refreshOwner = useRef(false)
 	const bcRef = useRef<BroadcastChannel | null>(null)
 	const router = useRouter()
+	// const queryClient = useQueryClient()
 
 	useEffect(() => {
 		// Inter-tab logout sync
@@ -70,7 +75,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 		}
 	}, [])
 
-	// Create a fetch wrapper with automatic token refresh
+	// Smart fetch that includes refresh token only for refresh endpoint
+	const smartFetch = async (url: string, options: RequestInit = {}): Promise<Response> => {
+		const baseHeaders: Record<string, string> = {
+			'X-Requested-With': 'XMLHttpRequest',
+		}
+		const headers = {
+			...baseHeaders,
+			...(options.headers as Record<string, string> | undefined),
+		}
+
+		// Browser will automatically send only relevant cookies based on path
+		const response = await fetch(url, {
+			...options,
+			headers,
+			credentials: "include",
+			signal: options.signal || getGlobalSignal(),
+		})
+
+		return response
+	}
+
+	// Create a fetch wrapper with automatic token refresh (for normal requests)
 	const authenticatedFetch = async (url: string, options: RequestInit = {}): Promise<Response> => {
 		const baseHeaders: Record<string, string> = {
 			'X-Requested-With': 'XMLHttpRequest',
@@ -88,7 +114,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 		})
 
 		// Handle 401 with single-flight refresh and retry
-		if (response.status === 401 && user) {
+		// Try refresh even if user is null (e.g., page load right after TTL expiry)
+		if (response.status === 401) {
 			try {
 				if (!refreshInFlight) {
 					refreshOwner.current = true
@@ -181,15 +208,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 	const performRefresh = async (): Promise<boolean> => {
 		try {
-			const requestBody = { type: 'call', id: '1', method: 'auth/refresh', args: {} }
-			
-			// Use bare fetch here to avoid recursion on 401 handling
-			const res = await fetch(API_URL, {
+			// Use dedicated refresh endpoint (includes refresh token via cookie path)
+			const res = await smartFetch(`${API_URL}/auth/refresh`, {
 				method: 'POST',
-				credentials: 'include',
-				headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-				body: JSON.stringify(requestBody),
-				signal: getGlobalSignal(),
+				headers: { 'Content-Type': 'application/json' },
 			})
 
 			if (res.ok) {
@@ -275,6 +297,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 		} finally {
 			// Clear user state regardless of server response
 			setUser(null)
+			// Clear all React Query cache
+			// queryClient.clear()
 			try { bcRef.current?.postMessage('logout') } catch {}
 			resetGlobalAbort()
 			router.push("/login")
@@ -285,6 +309,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 		await checkAuthStatus()
 	}
 
+	// const invalidateQueries = () => {
+	// 	queryClient.invalidateQueries()
+	// }
+
 	const value: AuthContextType = {
 		user,
 		isAuthenticated: !!user,
@@ -293,6 +321,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 		logout,
 		refreshUser,
 		refreshTokens,
+		authenticatedFetch,
 	}
 
 	return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
