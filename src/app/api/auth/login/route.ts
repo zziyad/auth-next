@@ -8,7 +8,8 @@ export async function POST(request: Request) {
 	const email = String(formData.get("email") || "")
 	const password = String(formData.get("password") || "")
 
-	const cookieHeader = cookies().toString()
+	const cookieStore = await cookies()
+	const cookieHeader = cookieStore.getAll().map(c => `${c.name}=${c.value}`).join('; ')
 	const headers = new Headers({
 		"X-Requested-With": "XMLHttpRequest",
 		"Content-Type": "application/json",

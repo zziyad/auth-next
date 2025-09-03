@@ -4,7 +4,8 @@ import { NextResponse } from "next/server"
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001"
 
 export async function POST(request: Request) {
-  const cookieHeader = cookies().toString()
+  const cookieStore = await cookies()
+  const cookieHeader = cookieStore.getAll().map(c => `${c.name}=${c.value}`).join('; ')
   const headers = new Headers({
     "X-Requested-With": "XMLHttpRequest",
     "Content-Type": "application/json",

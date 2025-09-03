@@ -14,7 +14,8 @@ export interface User {
 }
 
 async function serverFetch(input: string, init: RequestInit = {}) {
-  const cookieHeader = cookies().toString()
+  const cookieStore = await cookies()
+  const cookieHeader = cookieStore.getAll().map(c => `${c.name}=${c.value}`).join('; ')
   const headers = new Headers(init.headers)
   headers.set("X-Requested-With", "XMLHttpRequest")
   if (cookieHeader) headers.set("cookie", cookieHeader)
