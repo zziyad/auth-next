@@ -1,36 +1,57 @@
 "use client"
 
 import { useAuth } from "@/contexts/auth-context"
+import { apiRequest, apiRequestSilent, useApiRequest } from "@/lib/api-request"
 import { useState } from "react"
 
 export function AuthTest() {
-  const { user, isAuthenticated, login, logout, refreshTokens } = useAuth()
+  const { user, isAuthenticated, login, logout, refreshTokens, authenticatedFetch } = useAuth()
   const [testResult, setTestResult] = useState<string>("")
   const [isLoading, setIsLoading] = useState(false)
+  
+  // Example using the useApiRequest hook
+  const api = useApiRequest()
 
   const testProtectedEndpoint = async () => {
     setIsLoading(true)
     setTestResult("Testing...")
     
     try {
-      const requestBody = { type: 'call', id: '1', method: 'auth/me', args: {} }
-      
-      const res = await fetch("http://localhost:8001/api", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(requestBody),
-      })
-
-      if (res.ok) {
-        const data = await res.json()
-        setTestResult(`✅ Success: ${JSON.stringify(data.result, null, 2)}`)
-      } else {
-        const errorData = await res.json()
-        setTestResult(`❌ Error ${res.status}: ${JSON.stringify(errorData, null, 2)}`)
-      }
+      // Method 1: Using apiRequest function directly
+      const userData = await apiRequest(authenticatedFetch, 'auth/me', {})
+      setTestResult(`✅ Success (apiRequest): ${JSON.stringify(userData, null, 2)}`)
     } catch (error) {
-      setTestResult(`❌ Network Error: ${error}`)
+      setTestResult(`❌ Error (apiRequest): ${error}`)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const testProtectedEndpointWithHook = async () => {
+    setIsLoading(true)
+    setTestResult("Testing with hook...")
+    
+    try {
+      // Method 2: Using the useApiRequest hook
+      const userData = await api.request('auth/me', {})
+      setTestResult(`✅ Success (useApiRequest hook): ${JSON.stringify(userData, null, 2)}`)
+    } catch (error) {
+      setTestResult(`❌ Error (useApiRequest hook): ${error}`)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const testSilentRequest = async () => {
+    setIsLoading(true)
+    setTestResult("Testing silent request...")
+    
+    try {
+      // Method 3: Using apiRequestSilent (no toast notifications)
+      const userData = await apiRequestSilent(authenticatedFetch, 'auth/me', {})
+      setTestResult(`✅ Success (apiRequestSilent): ${JSON.stringify(userData, null, 2)}`)
+    } catch (error) {
+      setTestResult(`❌ Error (apiRequestSilent): ${error}`)
     } finally {
       setIsLoading(false)
     }
@@ -69,30 +90,59 @@ export function AuthTest() {
         )}
       </div>
 
+      <div className="mb-4 p-4 bg-blue-50 rounded">
+        <h3 className="font-semibold mb-2">API Request Examples:</h3>
+        <div className="text-sm space-y-1">
+          <p><strong>Method 1:</strong> <code>apiRequest(authenticatedFetch, 'auth/me', {})</code></p>
+          <p><strong>Method 2:</strong> <code>api.request('auth/me', {})</code> (using hook)</p>
+          <p><strong>Method 3:</strong> <code>apiRequestSilent(authenticatedFetch, 'auth/me', {})</code></p>
+        </div>
+      </div>
+
       <div className="space-y-4">
-        <button
-          onClick={testProtectedEndpoint}
-          disabled={!isAuthenticated || isLoading}
-          className="px-4 py-2 bg-blue-500 text-white rounded disabled:bg-gray-300"
-        >
-          Test Protected Endpoint (/me)
-        </button>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <button
+            onClick={testProtectedEndpoint}
+            disabled={!isAuthenticated || isLoading}
+            className="px-4 py-2 bg-blue-500 text-white rounded disabled:bg-gray-300"
+          >
+            Test API Request (Direct)
+          </button>
 
-        <button
-          onClick={testRefreshTokens}
-          disabled={!isAuthenticated || isLoading}
-          className="px-4 py-2 bg-green-500 text-white rounded disabled:bg-gray-300 ml-2"
-        >
-          Test Token Refresh
-        </button>
+          <button
+            onClick={testProtectedEndpointWithHook}
+            disabled={!isAuthenticated || isLoading}
+            className="px-4 py-2 bg-purple-500 text-white rounded disabled:bg-gray-300"
+          >
+            Test API Request (Hook)
+          </button>
 
-        <button
-          onClick={logout}
-          disabled={!isAuthenticated || isLoading}
-          className="px-4 py-2 bg-red-500 text-white rounded disabled:bg-gray-300 ml-2"
-        >
-          Logout
-        </button>
+          <button
+            onClick={testSilentRequest}
+            disabled={!isAuthenticated || isLoading}
+            className="px-4 py-2 bg-indigo-500 text-white rounded disabled:bg-gray-300"
+          >
+            Test Silent Request
+          </button>
+
+          <button
+            onClick={testRefreshTokens}
+            disabled={!isAuthenticated || isLoading}
+            className="px-4 py-2 bg-green-500 text-white rounded disabled:bg-gray-300"
+          >
+            Test Token Refresh
+          </button>
+        </div>
+
+        <div className="pt-4">
+          <button
+            onClick={logout}
+            disabled={!isAuthenticated || isLoading}
+            className="px-4 py-2 bg-red-500 text-white rounded disabled:bg-gray-300"
+          >
+            Logout
+          </button>
+        </div>
       </div>
 
       {testResult && (
