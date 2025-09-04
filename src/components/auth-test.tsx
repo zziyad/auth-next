@@ -5,7 +5,7 @@ import { apiRequest, apiRequestSilent, useApiRequest } from "@/lib/api-request"
 import { useState } from "react"
 
 export function AuthTest() {
-  const { user, isAuthenticated, login, logout, refreshTokens, authenticatedFetch } = useAuth()
+  const { user, isAuthenticated, logout, refreshTokens, authenticatedFetch } = useAuth()
   const [testResult, setTestResult] = useState<string>("")
   const [isLoading, setIsLoading] = useState(false)
   
@@ -18,7 +18,7 @@ export function AuthTest() {
     
     try {
       // Method 1: Using apiRequest function directly
-      const userData = await apiRequest(authenticatedFetch, 'auth/me', {})
+      const userData = await apiRequest(authenticatedFetch, 'event/list', {})
       setTestResult(`✅ Success (apiRequest): ${JSON.stringify(userData, null, 2)}`)
     } catch (error) {
       setTestResult(`❌ Error (apiRequest): ${error}`)
@@ -93,9 +93,9 @@ export function AuthTest() {
       <div className="mb-4 p-4 bg-blue-50 rounded">
         <h3 className="font-semibold mb-2">API Request Examples:</h3>
         <div className="text-sm space-y-1">
-          <p><strong>Method 1:</strong> <code>apiRequest(authenticatedFetch, 'auth/me', {})</code></p>
-          <p><strong>Method 2:</strong> <code>api.request('auth/me', {})</code> (using hook)</p>
-          <p><strong>Method 3:</strong> <code>apiRequestSilent(authenticatedFetch, 'auth/me', {})</code></p>
+          <p><strong>Method 1:</strong> <code>apiRequest(authenticatedFetch, &apos;auth/me&apos;, &#123;&#125;)</code></p>
+          <p><strong>Method 2:</strong> <code>api.request(&apos;auth/me&apos;, &#123;&#125;)</code> (using hook)</p>
+          <p><strong>Method 3:</strong> <code>apiRequestSilent(authenticatedFetch, &apos;auth/me&apos;, &#123;&#125;)</code></p>
         </div>
       </div>
 

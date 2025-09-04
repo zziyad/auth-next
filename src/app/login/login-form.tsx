@@ -14,7 +14,7 @@ export default function LoginForm() {
     <form action="/api/auth/login" method="post" className="space-y-4" onSubmit={() => setIsSubmitting(true)}>
       <div className="space-y-2">
         <Label htmlFor="email">Email</Label>
-        <Input id="email" name="email" type="email" placeholder="Enter your email" required disabled={isSubmitting} />
+        <Input id="email" name="email" type="email" placeholder="Enter your email" required />
       </div>
 
       <div className="space-y-2">
@@ -26,7 +26,6 @@ export default function LoginForm() {
             type={showPassword ? "text" : "password"}
             placeholder="Enter your password"
             required
-            disabled={isSubmitting}
           />
           <Button
             type="button"

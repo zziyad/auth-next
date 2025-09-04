@@ -32,12 +32,13 @@ export async function POST(request: Request) {
 	})
 
 	const text = await upstream.text()
-	let json: any = null
+	let json: unknown = null
 	try { json = JSON.parse(text) } catch {}
 
 	const setCookie = upstream.headers.get("set-cookie")
 
-	if (json?.result?.status === "logged") {
+	const status = (json as { result?: { status?: string } } | null)?.result?.status
+	if (status === "logged") {
 		const res = NextResponse.redirect(new URL("/dashboard", request.url), 303)
 		if (setCookie) res.headers.set("set-cookie", setCookie)
 		return res

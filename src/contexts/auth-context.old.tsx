@@ -46,8 +46,8 @@ const resetGlobalAbort = () => {
 }
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
-export function AuthProvider({ children, initialUser }: { children: ReactNode, initialUser?: User | null }) {
-	const [user, setUser] = useState<User | null>(initialUser ?? null)
+export function AuthProvider({ children }: { children: ReactNode }) {
+	const [user, setUser] = useState<User | null>(null)
 	const [isLoading, setIsLoading] = useState(true)
 	const [isRefreshing, setIsRefreshing] = useState(false)
 	const [lastErrorCode, setLastErrorCode] = useState<string | undefined>(undefined)
@@ -68,11 +68,7 @@ export function AuthProvider({ children, initialUser }: { children: ReactNode, i
 			}
 		}
 		bcRef.current = bc
-		if (!user) {
-			checkAuthStatus()
-		} else {
-			setIsLoading(false)
-		}
+		checkAuthStatus()
 		return () => {
 			try { bc.close() } catch {}
 			bcRef.current = null
@@ -191,7 +187,7 @@ export function AuthProvider({ children, initialUser }: { children: ReactNode, i
 		try {
 			const requestBody = { type: 'call', id: '1', method: 'auth/me', args: {} }
 			
-			const res = await authenticatedFetch('/api/rpc', {
+			const res = await authenticatedFetch(API_URL, {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify(requestBody),
@@ -213,7 +209,7 @@ export function AuthProvider({ children, initialUser }: { children: ReactNode, i
 	const performRefresh = async (): Promise<boolean> => {
 		try {
 			// Use dedicated refresh endpoint (includes refresh token via cookie path)
-			const res = await smartFetch(`/api/auth/refresh`, {
+			const res = await smartFetch(`${API_URL}/auth/refresh`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 			})
@@ -255,7 +251,7 @@ export function AuthProvider({ children, initialUser }: { children: ReactNode, i
 		try {
 			// do not log credentials
 			const requestBody = { type: 'call', id: '1', method: 'auth/signin', args: { email, password } }
-			const res = await authenticatedFetch('/api/rpc', {
+			const res = await authenticatedFetch(API_URL, {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify(requestBody),
@@ -291,7 +287,7 @@ export function AuthProvider({ children, initialUser }: { children: ReactNode, i
 			// Call logout endpoint to invalidate session
 			const requestBody = { type: 'call', id: '1', method: 'auth/logout', args: {} }
 			
-			await authenticatedFetch('/api/rpc', {
+			await authenticatedFetch(API_URL, {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify(requestBody),

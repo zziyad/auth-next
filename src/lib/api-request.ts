@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from "uuid"
-import toast from "react-hot-toast"
+// toast intentionally not used here
 
-interface ApiResponse<T = any> {
+interface ApiResponse<T = unknown> {
   type: string
   id: string
   result: {
@@ -21,10 +21,10 @@ const RPC_URL = "/api/rpc"
  * @param showToast - Whether to show toast notifications for errors (default: true)
  * @returns Promise with the API response data
  */
-export const apiRequest = async <T = any>(
+export const apiRequest = async <T = unknown>(
   authenticatedFetch: (url: string, options?: RequestInit) => Promise<Response>,
   url: string, 
-  data: Record<string, any> = {},
+  data: Record<string, unknown> = {},
 ): Promise<T> => {
 
   try {
@@ -46,8 +46,8 @@ export const apiRequest = async <T = any>(
 
     if (!response.ok) {
       if (response.status === 401) {
-        const error = new Error("Expire Token: Unauthorized")
-        ;(error as any).code = 401
+        const error = new Error("Expire Token: Unauthorized") as Error & { code?: number }
+        error.code = 401
         throw error
       }
 
@@ -58,7 +58,7 @@ export const apiRequest = async <T = any>(
       throw new Error(response.statusText)
     }
 
-    const result = await response.json()
+    const result: ApiResponse<T> = await response.json()
 
     // Handle the new response structure: { type: "callback", id: "...", result: { status: "...", response: ... } }
     const { status, response: responseData } = result.result
@@ -66,20 +66,23 @@ export const apiRequest = async <T = any>(
     console.log('🔍 API Request Result:', { status, responseData, fullResult: result })
     
     if (status === "rejected") {
-    const errorMessage = typeof responseData === 'string' ? responseData : "Request was rejected"
-    throw new Error(errorMessage)
+      const errorMessage = typeof responseData === 'string' ? responseData : "Request was rejected"
+      const err = new Error(errorMessage) as Error & { code?: number }
+      err.code = 400
+      throw err
     }
     
     return responseData
     
 
-  } catch (error: any) {
-    if (error.code === 401) {
+  } catch (error) {
+    const err = error as { code?: number; message?: string }
+    if (Number(err.code) === 401) {
       // Token expired - authenticatedFetch will handle refresh automatically
       throw error
     }
         
-    const errorMessage = error.message || "Server Error 500"
+    const errorMessage = err.message || "Server Error 500"
     
     throw new Error(errorMessage)
   }
@@ -88,10 +91,10 @@ export const apiRequest = async <T = any>(
 /**
  * Convenience function for API requests that don't need toast notifications
  */
-export const apiRequestSilent = <T = any>(
+export const apiRequestSilent = <T = unknown>(
   authenticatedFetch: (url: string, options?: RequestInit) => Promise<Response>,
   url: string, 
-  data: Record<string, any> = {}
+  data: Record<string, unknown> = {}
 ): Promise<T> => {
   return apiRequest<T>(authenticatedFetch, url, data)
 }
@@ -99,10 +102,10 @@ export const apiRequestSilent = <T = any>(
 /**
  * Convenience function for API requests with custom error handling
  */
-export const apiRequestCustom = <T = any>(
+export const apiRequestCustom = <T = unknown>(
   authenticatedFetch: (url: string, options?: RequestInit) => Promise<Response>,
   url: string, 
-  data: Record<string, any> = {},
+  data: Record<string, unknown> = {},
 ): Promise<T> => {
   
   return apiRequest<T>(authenticatedFetch, url, data).catch((error) => {
@@ -115,18 +118,20 @@ export const apiRequestCustom = <T = any>(
  * This makes it easier to use in components
  */
 export const useApiRequest = () => {
-  // Import useAuth hook dynamically to avoid circular dependencies
-  const { useAuth } = require('@/contexts/auth-context')
+  // Delay require to runtime and silence lint via inline comment, since this file
+  // is not used in SSR-gated pages and avoids static import cycles.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { useAuth } = require('@/contexts/auth-context') as { useAuth: () => { authenticatedFetch: (url: string, options?: RequestInit) => Promise<Response> } }
   const { authenticatedFetch } = useAuth()
   
   return {
-    request: <T = any>(url: string, data: Record<string, any> = {}) => 
+    request: <T = unknown>(url: string, data: Record<string, unknown> = {}) => 
       apiRequest<T>(authenticatedFetch, url, data ),
-    requestSilent: <T = any>(url: string, data: Record<string, any> = {}) => 
+    requestSilent: <T = unknown>(url: string, data: Record<string, unknown> = {}) => 
       apiRequestSilent<T>(authenticatedFetch, url, data),
-    requestCustom: <T = any>(
+    requestCustom: <T = unknown>(
       url: string, 
-      data: Record<string, any> = {},
+      data: Record<string, unknown> = {},
     ) => apiRequestCustom<T>(authenticatedFetch, url, data)
   }
 }
